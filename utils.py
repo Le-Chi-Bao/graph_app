@@ -4,55 +4,92 @@ import numpy as np
 from io import BytesIO
 import base64
 
-def draw_graph(G, pos=None, highlight_nodes=None, highlight_edges=None, 
-               title="", directed=False):
-    """
-    Ve do thi va tra ve hinh anh dang base64
-    """
-    plt.figure(figsize=(8, 6))
-    
-    if pos is None:
-        if directed:
-            pos = nx.spring_layout(G, seed=42)
+import io
+from PIL import Image
+
+# THÊM HÀM create_smart_layout
+def create_smart_layout(G):
+    """Tạo layout thông minh cho đồ thị"""
+    try:
+        if len(G.nodes()) <= 10:
+            return nx.circular_layout(G)
         else:
-            pos = nx.spring_layout(G, seed=42)
+            return nx.spring_layout(G, seed=42, k=2, iterations=100)
+    except:
+        return nx.spring_layout(G, seed=42)
     
-    # Ve tat ca cac node va edge
-    nx.draw_networkx_nodes(G, pos, node_color='lightblue', 
-                          node_size=500, alpha=0.8)
-    nx.draw_networkx_labels(G, pos)
+def draw_graph(G, highlight_nodes=None, highlight_edges=None, title="", directed=False):
+    plt.figure(figsize=(10, 8))
+    
+    # TẠO LAYOUT THÔNG MINH
+    pos = create_smart_layout(G)
+    
+    # Đảm bảo tất cả node có vị trí
+    if not pos:
+        pos = nx.spring_layout(G, seed=42, k=2, iterations=100)
+    
+    # Vẽ nodes với kích thước theo bậc
+    node_sizes = []
+    for node in G.nodes():
+        degree = G.degree(node)
+        node_sizes.append(300 + degree * 50)  # Node lớn hơn nếu có nhiều kết nối
+    
+    node_color = ['lightblue'] * len(G.nodes())
+    if highlight_nodes:
+        node_color = ['red' if node in highlight_nodes else 'lightblue' for node in G.nodes()]
+    
+    nx.draw_networkx_nodes(G, pos, node_color=node_color, node_size=node_sizes, alpha=0.9)
+    nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+    
+    # Vẽ edges với độ dày theo trọng số
+    edge_list = list(G.edges())
+    edge_colors = ['gray'] * len(edge_list)
+    edge_widths = []
+    edge_alphas = []
+    
+    for i, (u, v) in enumerate(edge_list):
+        # Độ dày theo trọng số
+        weight = G[u][v].get('weight', 1)
+        edge_widths.append(0.5 + weight * 0.3)
+        edge_alphas.append(0.7)
+        
+        if highlight_edges:
+            if (u, v) in highlight_edges or (v, u) in highlight_edges:
+                edge_colors[i] = 'red'
+                edge_widths[-1] = 4
+                edge_alphas[-1] = 1.0
     
     if directed:
-        nx.draw_networkx_edges(G, pos, arrowstyle='->', 
-                              arrowsize=20, alpha=0.5)
+        nx.draw_networkx_edges(G, pos, edgelist=edge_list, edge_color=edge_colors, 
+                              width=edge_widths, alpha=edge_alphas,
+                              arrows=True, arrowstyle='-|>', arrowsize=15,
+                              connectionstyle='arc3,rad=0.0')
     else:
-        nx.draw_networkx_edges(G, pos, alpha=0.5)
+        nx.draw_networkx_edges(G, pos, edgelist=edge_list, edge_color=edge_colors, 
+                              width=edge_widths, alpha=edge_alphas,
+                              connectionstyle='arc3,rad=0.0')
     
-    # Highlight nodes neu co
-    if highlight_nodes:
-        nx.draw_networkx_nodes(G, pos, nodelist=highlight_nodes, 
-                              node_color='red', node_size=700)
-    
-    # Highlight edges neu co
-    if highlight_edges:
-        nx.draw_networkx_edges(G, pos, edgelist=highlight_edges, 
-                              edge_color='red', width=3)
-    
-    # Ve trong so neu co
+    # Thêm trọng số với màu sắc
     edge_labels = nx.get_edge_attributes(G, 'weight')
     if edge_labels:
-        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
+        nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, 
+                                    font_size=9, font_weight='bold',
+                                    label_pos=0.5)  # 0.5 = giữa cạnh
     
-    plt.title(title)
+    plt.title(title, fontsize=14, fontweight='bold')
     plt.axis('off')
     
-    # Chuyen thanh base64
-    buf = BytesIO()
-    plt.savefig(buf, format='png', dpi=100)
+    # Tạo padding xung quanh
+    plt.tight_layout(pad=2.0)
+    
+    # Convert to numpy array
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight', dpi=120, facecolor='white')
     plt.close()
     buf.seek(0)
-    img_str = base64.b64encode(buf.read()).decode()
-    return f"data:image/png;base64,{img_str}"
+    
+    img = Image.open(buf)
+    return np.array(img)
 
 def adjacency_matrix_to_graph(matrix, directed=False):
     """
