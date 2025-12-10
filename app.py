@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import json
 import tempfile
 import os
+import warnings
 
 # ==================== IMPORT MODULES ====================
 from graph_operations import GraphOperations
@@ -26,7 +27,7 @@ def safe_int_convert(val):
         return 0
 
 def draw_and_save_graph(G, directed, highlight_path=None, highlight_edges=None, title=""):
-    """Vẽ đồ thị và lưu ra file TEMP - FIX PATH TOO LONG"""
+    """Vẽ đồ thị và lưu ra file TEMP"""
     if not G.nodes():
         return None
     
@@ -69,10 +70,9 @@ def draw_and_save_graph(G, directed, highlight_path=None, highlight_edges=None, 
     # Vẽ edges với màu sắc và độ dày khác nhau
     if directed:
         nx.draw_networkx_edges(G, pos, edge_color=edge_color, width=edge_width,
-                              arrows=True, arrowstyle='-|>', arrowsize=20,
-                              connectionstyle='arc3,rad=0.0')
+                              arrows=True, arrowstyle='-|>', arrowsize=20)
     else:
-        nx.draw_networkx_edges(G, pos, edge_color=edge_color, width=edge_width, connectionstyle='arc3,rad=0.0')
+        nx.draw_networkx_edges(G, pos, edge_color=edge_color, width=edge_width)
     
     # Thêm trọng số
     edge_labels = nx.get_edge_attributes(G, 'weight')
@@ -86,8 +86,8 @@ def draw_and_save_graph(G, directed, highlight_path=None, highlight_edges=None, 
     temp_dir = tempfile.gettempdir()
     temp_file = os.path.join(temp_dir, "graph_temp.png")
     
-    if len(temp_file) > 100:
-        temp_file = "C:/temp/graph.png"
+    # Tạo thư mục nếu chưa tồn tại
+    os.makedirs(os.path.dirname(temp_file), exist_ok=True)
     
     plt.savefig(temp_file, bbox_inches='tight', dpi=100)
     plt.close()
@@ -119,7 +119,7 @@ def create_graph_handler(text, directed):
                 continue
     
     if not edges:
-        return "❌ Không có dữ liệu hợp lệ", None
+        return "Không có dữ liệu hợp lệ", None
     
     # Tạo đồ thị
     current_graph = nx.DiGraph() if directed else nx.Graph()
@@ -131,12 +131,12 @@ def create_graph_handler(text, directed):
     
     img_path = draw_and_save_graph(current_graph, directed, 
                                    title=f"Đã tạo {len(edges)} cạnh")
-    return f"✅ Tạo thành công {len(edges)} cạnh", img_path
+    return f"Tạo thành công {len(edges)} cạnh", img_path
 
 def shortest_path_handler(start, end):
     """Tìm đường đi ngắn nhất"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         start = int(start)
@@ -152,21 +152,21 @@ def shortest_path_handler(start, end):
             img_path = draw_and_save_graph(
                 current_graph, is_directed, 
                 highlight_path=path,
-                highlight_edges=path_edges,  # THÊM DÒNG NÀY
+                highlight_edges=path_edges,
                 title=f"Đường đi ngắn nhất: {path} (dài: {length})"
             )
-            return f"📏 Đường đi: {' → '.join(map(str, path))}\n📊 Độ dài: {length}", img_path
+            return f"Đường đi: {' -> '.join(map(str, path))}\nĐộ dài: {length}", img_path
         except nx.NetworkXNoPath:
             img_path = draw_and_save_graph(current_graph, is_directed)
-            return "⚠ Không tìm thấy đường đi", img_path
+            return "Không tìm thấy đường đi", img_path
     except:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "❌ Node không hợp lệ", img_path
+        return "Node không hợp lệ", img_path
 
 def bfs_handler(start):
     """Xử lý BFS"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         start = int(start)
@@ -180,18 +180,18 @@ def bfs_handler(start):
         img_path = draw_and_save_graph(
             current_graph, is_directed,
             highlight_path=bfs_nodes,
-            highlight_edges=bfs_edges,  # THÊM DÒNG NÀY
+            highlight_edges=bfs_edges,
             title=f"BFS Tree từ node {start}"
         )
-        return f"🔄 BFS: {bfs_nodes}", img_path
+        return f"BFS: {bfs_nodes}", img_path
     except:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "❌ Node không hợp lệ", img_path
+        return "Node không hợp lệ", img_path
 
 def dfs_handler(start):
     """Xử lý DFS"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         start = int(start)
@@ -205,34 +205,34 @@ def dfs_handler(start):
         img_path = draw_and_save_graph(
             current_graph, is_directed,
             highlight_path=dfs_nodes,
-            highlight_edges=dfs_edges,  # THÊM DÒNG NÀY
+            highlight_edges=dfs_edges,
             title=f"DFS Tree từ node {start}"
         )
-        return f"🔍 DFS: {dfs_nodes}", img_path
+        return f"DFS: {dfs_nodes}", img_path
     except:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "❌ Node không hợp lệ", img_path
+        return "Node không hợp lệ", img_path
 
 def bipartite_handler():
     """Kiểm tra đồ thị 2 phía - Dùng GraphOperations"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         # Dùng graph_ops
         is_bip = graph_ops.is_bipartite()
-        result = "✅ Là đồ thị 2 phía" if is_bip else "❌ Không phải đồ thị 2 phía"
+        result = "Là đồ thị 2 phía" if is_bip else "Không phải đồ thị 2 phía"
         img_path = draw_and_save_graph(current_graph, is_directed, title=result)
         return result, img_path
     except:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "⚠ Không thể kiểm tra", img_path
+        return "Không thể kiểm tra", img_path
 
 # ==================== HANDLERS NÂNG CAO ====================
 def prim_handler():
     """Thuật toán Prim"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         mst_edges = graph_ops.prim_mst()
@@ -244,23 +244,23 @@ def prim_handler():
             
             img_path = draw_and_save_graph(
                 current_graph, is_directed,
-                highlight_edges=mst_edge_list,  # CHỈ HIGHLIGHT EDGES
+                highlight_edges=mst_edge_list,
                 title=f"Prim MST - Tổng trọng số: {total_weight}"
             )
-            result = f"✅ Cây khung nhỏ nhất (Prim):\n"
+            result = f"Cây khung nhỏ nhất (Prim):\n"
             for u, v, w in mst_edges:
-                result += f"  {u} → {v} (w={w})\n"
-            result += f"📊 Tổng trọng số: {total_weight}"
+                result += f"  {u} -> {v} (w={w})\n"
+            result += f"Tổng trọng số: {total_weight}"
             return result, img_path
         else:
-            return "⚠ Đồ thị không liên thông", None
+            return "Đồ thị không liên thông", None
     except Exception as e:
-        return f"❌ Lỗi: {str(e)}", None
+        return f"Lỗi: {str(e)}", None
 
 def kruskal_handler():
     """Thuật toán Kruskal"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         mst_edges = graph_ops.kruskal_mst()
@@ -275,20 +275,20 @@ def kruskal_handler():
                 highlight_edges=mst_edge_list,
                 title=f"Kruskal MST - Tổng trọng số: {total_weight}"
             )
-            result = f"✅ Cây khung nhỏ nhất (Kruskal):\n"
+            result = f"Cây khung nhỏ nhất (Kruskal):\n"
             for u, v, w in mst_edges:
                 result += f"  ({u}, {v}) - {w}\n"
-            result += f"📊 Tổng trọng số: {total_weight}"
+            result += f"Tổng trọng số: {total_weight}"
             return result, img_path
         else:
-            return "⚠ Đồ thị không liên thông", None
+            return "Đồ thị không liên thông", None
     except Exception as e:
-        return f"❌ Lỗi: {str(e)}", None
+        return f"Lỗi: {str(e)}", None
 
 def ford_fulkerson_handler(source, sink):
     """Thuật toán Ford-Fulkerson"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         source = int(source)
@@ -301,72 +301,64 @@ def ford_fulkerson_handler(source, sink):
             title=f"Ford-Fulkerson - Luồng cực đại: {max_flow}"
         )
         
-        return f"🌊 Luồng cực đại từ {source} → {sink}: {max_flow}", img_path
+        return f"Luồng cực đại từ {source} -> {sink}: {max_flow}", img_path
     except Exception as e:
-        return f"❌ Lỗi: {str(e)}", None
+        return f"Lỗi: {str(e)}", None
 
 def fleury_handler(start_node):
     """Thuật toán Fleury (tìm chu trình Euler)"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
-        # Tạm thời dùng networkx
         start = int(start_node)
-        if nx.is_eulerian(current_graph):
-            euler_circuit = list(nx.eulerian_circuit(current_graph, source=start))
-            
-            # Tạo path từ circuit
-            if euler_circuit:
-                path = [start]
-                for u, v in euler_circuit:
-                    if v not in path:
-                        path.append(v)
-                
-                img_path = draw_and_save_graph(
-                    current_graph, is_directed,
-                    highlight_path=path,
-                    title=f"Fleury - Chu trình Euler"
-                )
-                
-                result = f"✅ Chu trình Euler (Fleury):\n"
-                for u, v in euler_circuit:
-                    result += f"  {u} → {v}\n"
-                return result, img_path
+        circuit = graph_ops.fleury_eulerian_path(start)
         
-        return "⚠ Đồ thị không có chu trình Euler", None
+        if circuit:
+            img_path = draw_and_save_graph(
+                current_graph, is_directed,
+                highlight_edges=circuit,
+                title=f"Fleury - Chu trình Euler"
+            )
+            
+            result = f"Chu trình Euler (Fleury):\n"
+            for u, v in circuit:
+                result += f"  {u} -> {v}\n"
+            return result, img_path
+        
+        return "Đồ thị không có chu trình Euler", None
     except Exception as e:
-        return f"❌ Lỗi: {str(e)}", None
+        return f"Lỗi: {str(e)}", None
 
 def hierholzer_handler(start_node):
     """Thuật toán Hierholzer (tìm chu trình Euler)"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     try:
         start = int(start_node)
-        # Hierholzer cũng cho kết quả tương tự Fleury
-        if nx.is_eulerian(current_graph):
-            euler_circuit = list(nx.eulerian_circuit(current_graph, source=start))
-            
+        circuit = graph_ops.hierholzer_eulerian_circuit(start)
+        
+        if circuit:
             img_path = draw_and_save_graph(
                 current_graph, is_directed,
+                highlight_edges=circuit,
                 title=f"Hierholzer - Chu trình Euler"
             )
             
-            result = f"✅ Chu trình Euler (Hierholzer):\n"
-            for u, v in euler_circuit:
-                result += f"  {u} → {v}\n"
+            result = f"Chu trình Euler (Hierholzer):\n"
+            for u, v in circuit:
+                result += f"  {u} -> {v}\n"
             return result, img_path
         
-        return "⚠ Đồ thị không có chu trình Euler", None
+        return "Đồ thị không có chu trình Euler", None
     except Exception as e:
-        return f"❌ Lỗi: {str(e)}", None
+        return f"Lỗi: {str(e)}", None
 
 def advanced_algo_handler(algo_choice, param1=None, param2=None):
     """Xử lý thuật toán nâng cao"""
     if not current_graph.nodes():
-        return "❌ Chưa có đồ thị", None
+        return "Chưa có đồ thị", None
     
     if algo_choice == "Prim":
         return prim_handler()
@@ -374,32 +366,32 @@ def advanced_algo_handler(algo_choice, param1=None, param2=None):
         return kruskal_handler()
     elif algo_choice == "Ford-Fulkerson":
         if param1 is None or param2 is None:
-            return "⚠ Vui lòng nhập source và sink", None
+            return "Vui lòng nhập source và sink", None
         return ford_fulkerson_handler(param1, param2)
     elif algo_choice == "Fleury":
         if param1 is None:
-            return "⚠ Vui lòng nhập node bắt đầu", None
+            return "Vui lòng nhập node bắt đầu", None
         return fleury_handler(param1)
     elif algo_choice == "Hierholzer":
         if param1 is None:
-            return "⚠ Vui lòng nhập node bắt đầu", None
+            return "Vui lòng nhập node bắt đầu", None
         return hierholzer_handler(param1)
     
-    return "⚠ Vui lòng chọn thuật toán", None
+    return "Vui lòng chọn thuật toán", None
 
 # ==================== GRADIO UI ====================
-with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as demo:
     
     # Header
-    gr.Markdown("# 📊 **TRÌNH XỬ LÝ ĐỒ THỊ**")
+    gr.Markdown("# TRÌNH XỬ LÝ ĐỒ THỊ")
     gr.Markdown("Nhập đồ thị và thực hiện các thuật toán cơ bản & nâng cao")
     
     with gr.Tabs():
-        # TAB 1: NHẬP ĐỒ THỊ (giữ nguyên)
-        with gr.Tab("📝 Nhập đồ thị"):
+        # TAB 1: NHẬP ĐỒ THỊ
+        with gr.Tab("Nhập đồ thị"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    gr.Markdown("### **Nhập danh sách cạnh**")
+                    gr.Markdown("### Nhập danh sách cạnh")
                     input_text = gr.Textbox(
                         label="Mỗi dòng: u v [weight]",
                         placeholder="Ví dụ:\n0 1 5\n0 2 3\n1 2 2",
@@ -414,7 +406,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                     status = gr.Textbox(label="Trạng thái", interactive=False)
                 
                 with gr.Column(scale=1):
-                    gr.Markdown("### **Hiển thị**")
+                    gr.Markdown("### Hiển thị")
                     output_img = gr.Image(label="Đồ thị")
             
             create_btn.click(
@@ -423,12 +415,12 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                 outputs=[status, output_img]
             )
         
-        # TAB 2: THUẬT TOÁN CƠ BẢN (giữ nguyên)
-        with gr.Tab("🔍 Thuật toán cơ bản"):
+        # TAB 2: THUẬT TOÁN CƠ BẢN
+        with gr.Tab("Thuật toán cơ bản"):
             with gr.Row():
                 with gr.Column():
                     # Dijkstra
-                    gr.Markdown("### **Đường đi ngắn nhất**")
+                    gr.Markdown("### Đường đi ngắn nhất")
                     with gr.Row():
                         start_node = gr.Number(label="Node bắt đầu", value=0, precision=0)
                         end_node = gr.Number(label="Node kết thúc", value=1, precision=0)
@@ -437,7 +429,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                     dijkstra_result = gr.Textbox(label="Kết quả")
                     
                     # BFS/DFS
-                    gr.Markdown("### **Duyệt đồ thị**")
+                    gr.Markdown("### Duyệt đồ thị")
                     traversal_start = gr.Number(label="Node bắt đầu", value=0, precision=0)
                     
                     with gr.Row():
@@ -447,7 +439,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                     traversal_result = gr.Textbox(label="Kết quả duyệt")
                     
                     # Bipartite
-                    gr.Markdown("### **Kiểm tra tính chất**")
+                    gr.Markdown("### Kiểm tra tính chất")
                     bipartite_btn = gr.Button("Kiểm tra 2 phía")
                     bipartite_result = gr.Textbox(label="Kết quả")
                 
@@ -478,11 +470,11 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                 outputs=[bipartite_result, algo_img]
             )
         
-        # TAB 3: THUẬT TOÁN NÂNG CAO (MỚI)
-        with gr.Tab("🚀 Thuật toán nâng cao"):
+        # TAB 3: THUẬT TOÁN NÂNG CAO
+        with gr.Tab("Thuật toán nâng cao"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    gr.Markdown("### **Lựa chọn thuật toán**")
+                    gr.Markdown("### Lựa chọn thuật toán")
                     
                     algo_choice = gr.Radio(
                         choices=["Prim", "Kruskal", "Ford-Fulkerson", "Fleury", "Hierholzer"],
@@ -532,7 +524,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                     run_algo_btn = gr.Button("Chạy thuật toán", variant="primary", size="lg")
                 
                 with gr.Column(scale=1):
-                    gr.Markdown("### **Kết quả**")
+                    gr.Markdown("### Kết quả")
                     advanced_result = gr.Textbox(label="Kết quả thuật toán", lines=6)
                     advanced_img = gr.Image(label="Trực quan hóa")
             
@@ -551,9 +543,9 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                 outputs=[advanced_result, advanced_img]
             )
         
-        # TAB 4: CHUYỂN ĐỔI (giữ nguyên)
-        with gr.Tab("🔄 Chuyển đổi"):
-            gr.Markdown("### **Chuyển đổi biểu diễn**")
+        # TAB 4: CHUYỂN ĐỔI
+        with gr.Tab("Chuyển đổi"):
+            gr.Markdown("### Chuyển đổi biểu diễn")
             
             format_type = gr.Radio(
                 choices=["Ma trận kề", "Danh sách kề", "Danh sách cạnh"],
@@ -566,7 +558,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
             
             def convert_handler(format_type):
                 if not current_graph.nodes():
-                    return "❌ Chưa có đồ thị"
+                    return "Chưa có đồ thị"
                 
                 try:
                     if format_type == "Ma trận kề":
@@ -595,7 +587,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                     
                     return result
                 except Exception as e:
-                    return f"❌ Lỗi: {str(e)}"
+                    return f"Lỗi: {str(e)}"
             
             convert_btn.click(
                 fn=convert_handler,
@@ -603,17 +595,17 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                 outputs=[conversion_output]
             )
         
-        # TAB 5: LƯU/TẢI (giữ nguyên)
-        with gr.Tab("💾 Lưu/Tải"):
+        # TAB 5: LƯU/TẢI
+        with gr.Tab("Lưu/Tải"):
             with gr.Row():
                 with gr.Column():
-                    gr.Markdown("### **Lưu đồ thị**")
+                    gr.Markdown("### Lưu đồ thị")
                     save_btn = gr.Button("Xuất JSON", variant="primary")
                     json_output = gr.Textbox(label="Dữ liệu JSON", lines=8)
                     
                     def save_handler():
                         if not current_graph.nodes():
-                            return "❌ Chưa có đồ thị"
+                            return "Chưa có đồ thị"
                         
                         edges = [(u, v, current_graph[u][v].get('weight', 1)) 
                                 for u, v in current_graph.edges()]
@@ -628,7 +620,7 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                     save_btn.click(fn=save_handler, outputs=[json_output])
                 
                 with gr.Column():
-                    gr.Markdown("### **Tải đồ thị**")
+                    gr.Markdown("### Tải đồ thị")
                     json_input = gr.Textbox(
                         label="Dán JSON ở đây",
                         placeholder='{"directed": false, "edges": [[0,1,5], [0,2,3]]}',
@@ -654,9 +646,9 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
                             
                             img_path = draw_and_save_graph(current_graph, is_directed,
                                                          title="Đồ thị đã tải")
-                            return "✅ Đã tải thành công", img_path
+                            return "Đã tải thành công", img_path
                         except:
-                            return "❌ JSON không hợp lệ", None
+                            return "JSON không hợp lệ", None
                     
                     load_btn.click(
                         fn=load_handler,
@@ -667,26 +659,30 @@ with gr.Blocks(title="Graph Visualizer", theme=gr.themes.Soft()) as demo:
     # Footer
     gr.Markdown("---")
     gr.Markdown("""
-    ### 📌 **Hướng dẫn nhanh:**
-    1. **Tab 1**: Nhập đồ thị (mỗi dòng: `u v weight`)
-    2. **Tab 2**: Thuật toán cơ bản (Dijkstra, BFS, DFS, 2 phía)
-    3. **Tab 3**: Thuật toán nâng cao (Prim, Kruskal, Ford-Fulkerson, Fleury, Hierholzer)
-    4. **Tab 4**: Chuyển đổi định dạng
-    5. **Tab 5**: Lưu/tải đồ thị
+    ### Hướng dẫn nhanh:
+    1. Tab 1: Nhập đồ thị (mỗi dòng: u v weight)
+    2. Tab 2: Thuật toán cơ bản (Dijkstra, BFS, DFS, 2 phía)
+    3. Tab 3: Thuật toán nâng cao (Prim, Kruskal, Ford-Fulkerson, Fleury, Hierholzer)
+    4. Tab 4: Chuyển đổi định dạng
+    5. Tab 5: Lưu/tải đồ thị
     """)
 
 # ==================== CHẠY ỨNG DỤNG ====================
 if __name__ == "__main__":
-    # print(" Ứng dụng đang chạy tại: http://localhost:7869")
+    # Suppress warnings
+    warnings.filterwarnings("ignore", category=UserWarning)
     
-    # # Tạo thư mục temp nếu chưa có
-    # temp_dir = "C:/temp"
-    # if not os.path.exists(temp_dir):
-    #     os.makedirs(temp_dir)
+    print("Ứng dụng đang chạy tại: http://localhost:7872")
+    print("Tab 1: Nhập đồ thị")
+    print("Tab 2: Thuật toán cơ bản (Dijkstra, BFS, DFS)")
+    print("Tab 3: Thuật toán nâng cao (Prim, Kruskal, Ford-Fulkerson, Fleury, Hierholzer)")
+    print("Tab 4: Chuyển đổi định dạng")
+    print("Tab 5: Lưu/tải đồ thị")
     
     demo.launch(
-        # server_name="0.0.0.0",
-        # server_port=7871,
-        # share=False,
-        # show_error=True
+        server_name="0.0.0.0",
+        server_port=7882,
+        share=False,
+        show_error=True,
+        quiet=True
     )

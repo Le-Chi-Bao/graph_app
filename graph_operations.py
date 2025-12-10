@@ -2,6 +2,9 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from collections import deque
 import heapq
+import warnings
+
+warnings.filterwarnings("ignore")
 
 class GraphOperations:
     def __init__(self):
@@ -9,13 +12,13 @@ class GraphOperations:
         self.directed = False
     
     def set_graph(self, G, directed=False):
-        """Thiet lap do thi"""
+        """Thiết lập đồ thị"""
         self.graph = G
         self.directed = directed
     
-    # 1. Tim duong di ngan nhat (Dijkstra)
+    # 1. Tìm đường đi ngắn nhất (Dijkstra)
     def shortest_path(self, start, end):
-        """Tim duong di ngan nhat bang Dijkstra"""
+        """Tìm đường đi ngắn nhất bằng Dijkstra"""
         if not self.graph.has_node(start) or not self.graph.has_node(end):
             return None, float('inf')
         
@@ -26,9 +29,9 @@ class GraphOperations:
         except nx.NetworkXNoPath:
             return None, float('inf')
     
-    # 2. Duyet BFS
+    # 2. Duyệt BFS
     def bfs_traversal(self, start):
-        """Duyet do thi theo BFS"""
+        """Duyệt đồ thị theo BFS"""
         visited = []
         queue = deque([start])
         
@@ -43,9 +46,9 @@ class GraphOperations:
         
         return visited
     
-    # 3. Duyet DFS
+    # 3. Duyệt DFS
     def dfs_traversal(self, start):
-        """Duyet do thi theo DFS"""
+        """Duyệt đồ thị theo DFS"""
         visited = []
         stack = [start]
         
@@ -60,17 +63,17 @@ class GraphOperations:
         
         return visited
     
-    # 4. Kiem tra do thi 2 phia
+    # 4. Kiểm tra đồ thị 2 phía
     def is_bipartite(self):
-        """Kiem tra do thi co phai la 2 phia khong"""
+        """Kiểm tra đồ thị có phải là 2 phía không"""
         try:
             return nx.is_bipartite(self.graph)
         except:
             return False
     
-    # 5. Chuyen doi bieu dien
+    # 5. Chuyển đổi biểu diễn
     def to_adjacency_matrix(self):
-        """Chuyen sang ma tran ke"""
+        """Chuyển sang ma trận kề"""
         nodes = sorted(self.graph.nodes())
         n = len(nodes)
         matrix = [[0] * n for _ in range(n)]
@@ -86,7 +89,7 @@ class GraphOperations:
         return matrix, nodes
     
     def to_adjacency_list(self):
-        """Chuyen sang danh sach ke"""
+        """Chuyển sang danh sách kề"""
         adj_list = {}
         for node in self.graph.nodes():
             neighbors = []
@@ -97,16 +100,16 @@ class GraphOperations:
         return adj_list
     
     def to_edge_list(self):
-        """Chuyen sang danh sach canh"""
+        """Chuyển sang danh sách cạnh"""
         edges = []
         for u, v, data in self.graph.edges(data=True):
             weight = data.get('weight', 1)
             edges.append((u, v, weight))
         return edges
     
-    # 6. Thuat toan Prim
+    # 6. Thuật toán Prim
     def prim_mst(self):
-        """Tim cay khung nho nhat bang Prim"""
+        """Tìm cây khung nhỏ nhất bằng Prim"""
         if not nx.is_connected(self.graph.to_undirected()):
             return None
         
@@ -132,9 +135,9 @@ class GraphOperations:
         
         return mst_edges
     
-    # 7. Thuat toan Kruskal
+    # 7. Thuật toán Kruskal
     def kruskal_mst(self):
-        """Tim cay khung nho nhat bang Kruskal"""
+        """Tìm cây khung nhỏ nhất bằng Kruskal"""
         parent = {}
         
         def find(node):
@@ -150,11 +153,11 @@ class GraphOperations:
                 return True
             return False
         
-        # Khoi tao
+        # Khởi tạo
         for node in self.graph.nodes():
             parent[node] = node
         
-        # Sap xep cac canh theo trong so
+        # Sắp xếp các cạnh theo trọng số
         edges = []
         for u, v, data in self.graph.edges(data=True):
             weight = data.get('weight', 1)
@@ -169,13 +172,13 @@ class GraphOperations:
         
         return mst_edges
     
-    # 8. Thuat toan Ford-Fulkerson
+    # 8. Thuật toán Ford-Fulkerson
     def ford_fulkerson(self, source, sink):
-        """Tim luong cuc dai bang Ford-Fulkerson"""
-        # Tao do thi residual
+        """Tìm luồng cực đại bằng Ford-Fulkerson"""
+        # Tạo đồ thị residual
         R = nx.DiGraph() if self.directed else nx.Graph()
         
-        # Them cac canh voi capacity
+        # Thêm các cạnh với capacity
         for u, v, data in self.graph.edges(data=True):
             capacity = data.get('weight', 1)
             R.add_edge(u, v, capacity=capacity, flow=0)
@@ -185,7 +188,7 @@ class GraphOperations:
         max_flow = 0
         
         while True:
-            # Tim duong tang luong bang BFS
+            # Tìm đường tăng luồng bằng BFS
             visited = {source: None}
             queue = deque([source])
             found = False
@@ -203,7 +206,7 @@ class GraphOperations:
             if not found:
                 break
             
-            # Tim gia tri luong tang
+            # Tìm giá trị luồng tăng
             path_flow = float('inf')
             v = sink
             while v != source:
@@ -211,7 +214,7 @@ class GraphOperations:
                 path_flow = min(path_flow, R[u][v]['capacity'] - R[u][v]['flow'])
                 v = u
             
-            # Cap nhat luong
+            # Cập nhật luồng
             v = sink
             while v != source:
                 u = visited[v]
@@ -222,3 +225,133 @@ class GraphOperations:
             max_flow += path_flow
         
         return max_flow
+    
+    # 9. Thuật toán Fleury (CẢI THIỆN)
+    def fleury_eulerian_path(self, start=None):
+        """Tìm chu trình Euler bằng Fleury"""
+        if self.graph is None or len(self.graph.nodes()) == 0:
+            return None
+        
+        # Tạo bản sao đồ thị
+        G = self.graph.copy()
+        
+        # Kiểm tra điều kiện Euler
+        if not nx.is_eulerian(G):
+            return None
+        
+        # Chọn node bắt đầu
+        if start is None:
+            # Chọn node có bậc lẻ nếu có, không thì node đầu tiên
+            odd_nodes = [node for node in G.nodes() if G.degree(node) % 2 == 1]
+            start = odd_nodes[0] if odd_nodes else list(G.nodes())[0]
+        
+        circuit = []
+        current = start
+        
+        # Hàm kiểm tra cạnh có phải là cầu không
+        def is_bridge(u, v):
+            # Đếm số thành phần liên thông trước khi xóa cạnh
+            G_temp = G.copy()
+            G_temp.remove_edge(u, v)
+            return nx.number_connected_components(G_temp.to_undirected()) > nx.number_connected_components(G.to_undirected())
+        
+        while G.number_of_edges() > 0:
+            neighbors = list(G.neighbors(current))
+            
+            # Chọn cạnh
+            chosen_edge = None
+            for neighbor in neighbors:
+                if not is_bridge(current, neighbor):
+                    chosen_edge = (current, neighbor)
+                    break
+            
+            # Nếu tất cả đều là cầu, chọn cạnh đầu tiên
+            if chosen_edge is None and neighbors:
+                chosen_edge = (current, neighbors[0])
+            
+            if chosen_edge:
+                circuit.append(chosen_edge)
+                G.remove_edge(chosen_edge[0], chosen_edge[1])
+                current = chosen_edge[1]
+            else:
+                break
+        
+        return circuit
+    
+    # 10. Thuật toán Hierholzer (CẢI THIỆN)
+    def hierholzer_eulerian_circuit(self, start=None):
+        """Tìm chu trình Euler bằng Hierholzer"""
+        if self.graph is None or len(self.graph.nodes()) == 0:
+            return None
+        
+        # Tạo bản sao để sửa đổi
+        G = self.graph.copy()
+        
+        # Kiểm tra điều kiện Euler
+        if not nx.is_eulerian(G):
+            return None
+        
+        # Chọn node bắt đầu
+        if start is None:
+            start = list(G.nodes())[0]
+        
+        # Thuật toán Hierholzer
+        circuit = []
+        stack = [start]
+        
+        while stack:
+            current = stack[-1]
+            
+            # Nếu node còn cạnh
+            if G.degree(current) > 0:
+                # Lấy một cạnh bất kỳ
+                next_node = list(G.neighbors(current))[0]
+                
+                # Thêm cạnh vào stack
+                stack.append(next_node)
+                
+                # Xóa cạnh
+                G.remove_edge(current, next_node)
+            else:
+                # Nếu node không còn cạnh, thêm vào circuit
+                circuit.append(stack.pop())
+        
+        # Chuyển circuit thành các cạnh
+        edges = []
+        for i in range(len(circuit) - 1):
+            edges.append((circuit[i], circuit[i+1]))
+        
+        return edges
+    
+    # 11. Phương thức bổ trợ: Kiểm tra đồ thị Euler
+    def is_eulerian(self):
+        """Kiểm tra xem đồ thị có chu trình Euler không"""
+        if self.graph is None:
+            return False
+        return nx.is_eulerian(self.graph)
+    
+    # 12. Phương thức bổ trợ: Lấy thông tin đồ thị
+    def get_graph_info(self):
+        """Lấy thông tin chi tiết về đồ thị"""
+        if self.graph is None:
+            return "Chưa có đồ thị"
+        
+        info = []
+        info.append(f"📊 Số node: {len(self.graph.nodes())}")
+        info.append(f"📈 Số cạnh: {len(self.graph.edges())}")
+        info.append(f"🎯 Loại: {'Có hướng' if self.directed else 'Vô hướng'}")
+        
+        # Kiểm tra tính liên thông
+        if not self.directed:
+            connected = nx.is_connected(self.graph)
+            info.append(f"🔗 Liên thông: {'Có' if connected else 'Không'}")
+        
+        # Kiểm tra Euler
+        eulerian = self.is_eulerian()
+        info.append(f"🔄 Có chu trình Euler: {'Có' if eulerian else 'Không'}")
+        
+        # Kiểm tra 2 phía
+        bipartite = self.is_bipartite()
+        info.append(f"🎭 Là đồ thị 2 phía: {'Có' if bipartite else 'Không'}")
+        
+        return "\n".join(info)
