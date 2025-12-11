@@ -106,13 +106,13 @@ class GraphOperations:
             weight = data.get('weight', 1)
             edges.append((u, v, weight))
         return edges
-    
+
     # 6. Thuật toán Prim
     def prim_mst(self):
         """Tìm cây khung nhỏ nhất bằng Prim"""
         if not nx.is_connected(self.graph.to_undirected()):
             return None
-        
+
         mst_edges = []
         visited = set()
         start_node = list(self.graph.nodes())[0]
@@ -337,21 +337,21 @@ class GraphOperations:
             return "Chưa có đồ thị"
         
         info = []
-        info.append(f"📊 Số node: {len(self.graph.nodes())}")
-        info.append(f"📈 Số cạnh: {len(self.graph.edges())}")
-        info.append(f"🎯 Loại: {'Có hướng' if self.directed else 'Vô hướng'}")
+        info.append(f" Số node: {len(self.graph.nodes())}")
+        info.append(f" Số cạnh: {len(self.graph.edges())}")
+        info.append(f" Loại: {'Có hướng' if self.directed else 'Vô hướng'}")
         
         # Kiểm tra tính liên thông
         if not self.directed:
             connected = nx.is_connected(self.graph)
-            info.append(f"🔗 Liên thông: {'Có' if connected else 'Không'}")
+            info.append(f" Liên thông: {'Có' if connected else 'Không'}")
         
         # Kiểm tra Euler
         eulerian = self.is_eulerian()
-        info.append(f"🔄 Có chu trình Euler: {'Có' if eulerian else 'Không'}")
+        info.append(f" Có chu trình Euler: {'Có' if eulerian else 'Không'}")
         
         # Kiểm tra 2 phía
         bipartite = self.is_bipartite()
-        info.append(f"🎭 Là đồ thị 2 phía: {'Có' if bipartite else 'Không'}")
+        info.append(f" Là đồ thị 2 phía: {'Có' if bipartite else 'Không'}")
         
         return "\n".join(info)

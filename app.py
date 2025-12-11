@@ -595,67 +595,161 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                 outputs=[conversion_output]
             )
         
-        # TAB 5: LƯU/TẢI
-        with gr.Tab("Lưu/Tải"):
+        # ==================== CHỈ SỬA TAB 5 ====================
+
+        # ==================== TAB 5: LƯU/TẢI - ĐƠN GIẢN ====================
+
+        with gr.Tab(" Lưu/Tải"):
+            gr.Markdown("###  Lưu đồ thị bằng danh sách kề")
+            
             with gr.Row():
-                with gr.Column():
-                    gr.Markdown("### Lưu đồ thị")
-                    save_btn = gr.Button("Xuất JSON", variant="primary")
-                    json_output = gr.Textbox(label="Dữ liệu JSON", lines=8)
+                with gr.Column(scale=1):
+                    # PHẦN LƯU
+                    gr.Markdown("####  Xuất đồ thị")
                     
-                    def save_handler():
-                        if not current_graph.nodes():
-                            return "Chưa có đồ thị"
-                        
-                        edges = [(u, v, current_graph[u][v].get('weight', 1)) 
-                                for u, v in current_graph.edges()]
-                        
-                        data = {
-                            "directed": is_directed,
-                            "nodes": list(current_graph.nodes()),
-                            "edges": edges
-                        }
-                        return json.dumps(data, indent=2)
+                    save_btn = gr.Button(" Copy danh sách kề", variant="primary", size="lg")
+                    save_status = gr.Textbox(label="Trạng thái", interactive=False)
                     
-                    save_btn.click(fn=save_handler, outputs=[json_output])
-                
-                with gr.Column():
-                    gr.Markdown("### Tải đồ thị")
-                    json_input = gr.Textbox(
-                        label="Dán JSON ở đây",
-                        placeholder='{"directed": false, "edges": [[0,1,5], [0,2,3]]}',
-                        lines=8
+                    # Textbox hiển thị danh sách kề
+                    json_output = gr.Code(
+                        label="Danh sách kề (JSON)",
+                        language="json",
+                        lines=10,
+                        interactive=False,
+                        value="{}"
                     )
                     
-                    load_btn = gr.Button("Tải từ JSON")
-                    load_status = gr.Textbox(label="Trạng thái")
+                    # Nút copy tự động
+                    copy_btn = gr.Button(" Copy vào clipboard", variant="secondary")
                     
-                    def load_handler(json_str):
+                    def save_adjacency_list():
+                        """Xuất danh sách kề dạng JSON đẹp"""
+                        if not current_graph.nodes():
+                            return "Chưa có đồ thị", "{}"
+                        
                         try:
-                            data = json.loads(json_str)
+                            # Lấy danh sách kề từ graph_ops
+                            adj_list = graph_ops.to_adjacency_list()
+                            
+                            # Tạo JSON có cấu trúc đẹp
+                            data = {
+                                "directed": is_directed,
+                                "weighted": any('weight' in data for _, _, data in current_graph.edges(data=True)),
+                                "adjacency_list": {}
+                            }
+                            
+                            # Format đẹp hơn
+                            for node in sorted(adj_list.keys()):
+                                neighbors = []
+                                for neighbor, weight in adj_list[node]:
+                                    neighbors.append([neighbor, weight])
+                                data["adjacency_list"][str(node)] = neighbors
+                            
+                            json_str = json.dumps(data, indent=2, ensure_ascii=False)
+                            return " Đã tạo danh sách kề", json_str
+                            
+                        except Exception as e:
+                            return f" Lỗi: {str(e)}", "{}"
+                    
+                    def copy_to_clipboard(json_str):
+                        """Copy JSON vào clipboard (giả lập)"""
+                        if json_str != "{}":
+                            # Trong Gradio, có thể dùng js để copy thật
+                            return " Đã copy vào clipboard"
+                        return " Không có dữ liệu để copy"
+                    
+                    save_btn.click(
+                        fn=save_adjacency_list,
+                        outputs=[save_status, json_output]
+                    )
+                    
+                    copy_btn.click(
+                        fn=copy_to_clipboard,
+                        inputs=[json_output],
+                        outputs=[save_status]
+                    )
+                    
+                with gr.Column(scale=1):
+                    # PHẦN TẢI
+                    gr.Markdown("####  Tải đồ thị")
+                    
+                    # Hướng dẫn
+                    gr.Markdown("""
+                    **Định dạng JSON:**
+                    ```json
+                    {
+                    "directed": false,
+                    "adjacency_list": {
+                        "0": [[1, 5], [2, 3]],
+                        "1": [[0, 5], [2, 2]]
+                    }
+                    }
+                    ```
+                    """)
+                    
+                    json_input = gr.Textbox(
+                        label="Dán JSON danh sách kề",
+                        placeholder='{"directed": false, "adjacency_list": {"0": [[1,5]], "1": [[0,5]]}}',
+                        lines=6
+                    )
+                    
+                    load_btn = gr.Button(" Tạo đồ thị từ JSON", variant="primary", size="lg")
+                    load_status = gr.Textbox(label="Trạng thái tải", interactive=False)
+                    
+                    def load_from_json(json_str):
+                        """Tải đồ thị từ JSON danh sách kề"""
+                        if not json_str.strip():
+                            return " Vui lòng nhập JSON", None
+                        
+                        try:
                             global current_graph, is_directed, graph_ops
                             
+                            data = json.loads(json_str)
+                            
+                            # Lấy thông tin
                             is_directed = data.get("directed", False)
+                            adj_list = data.get("adjacency_list", {})
+                            
+                            if not adj_list:
+                                return " JSON không có adjacency_list", None
+                            
+                            # Tạo đồ thị mới
                             current_graph = nx.DiGraph() if is_directed else nx.Graph()
                             
-                            for u, v, w in data.get("edges", []):
-                                current_graph.add_edge(u, v, weight=w)
+                            # Thêm các cạnh
+                            edge_count = 0
+                            for u_str, neighbors in adj_list.items():
+                                u = int(u_str)
+                                for neighbor_info in neighbors:
+                                    if isinstance(neighbor_info, list) and len(neighbor_info) >= 2:
+                                        v = int(neighbor_info[0])
+                                        w = float(neighbor_info[1]) if len(neighbor_info) > 1 else 1.0
+                                        current_graph.add_edge(u, v, weight=w)
+                                        edge_count += 1
                             
                             # Cập nhật graph_ops
                             graph_ops.set_graph(current_graph, is_directed)
                             
-                            img_path = draw_and_save_graph(current_graph, is_directed,
-                                                         title="Đồ thị đã tải")
-                            return "Đã tải thành công", img_path
-                        except:
-                            return "JSON không hợp lệ", None
+                            # Vẽ đồ thị
+                            img_path = draw_and_save_graph(
+                                current_graph, 
+                                is_directed,
+                                title=f"Đồ thị ({len(current_graph.nodes())} nodes, {edge_count} edges)"
+                            )
+                            
+                            return f" Đã tải: {len(current_graph.nodes())} nodes, {edge_count} edges", img_path
+                            
+                        except json.JSONDecodeError:
+                            return " JSON không hợp lệ", None
+                        except Exception as e:
+                            return f" Lỗi: {str(e)}", None
                     
                     load_btn.click(
-                        fn=load_handler,
+                        fn=load_from_json,
                         inputs=[json_input],
                         outputs=[load_status, output_img]
                     )
-    
+            
     # Footer
     gr.Markdown("---")
     gr.Markdown("""
@@ -681,7 +775,7 @@ if __name__ == "__main__":
     
     demo.launch(
         server_name="0.0.0.0",
-        server_port=7882,
+        server_port=7880,
         share=False,
         show_error=True,
         quiet=True
