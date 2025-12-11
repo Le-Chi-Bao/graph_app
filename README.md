@@ -1,5 +1,5 @@
-# Graph Visualization & Algorithms Tool
-# Một ứng dụng web tương tác để trực quan hóa, phân tích và thực thi các thuật toán đồ thị, được phát triển cho môn học Cấu trúc rời rạc.
+## Graph Visualization & Algorithms Tool
+## Một ứng dụng web tương tác để trực quan hóa, phân tích và thực thi các thuật toán đồ thị, được phát triển cho môn học Cấu trúc rời rạc.
 
 ##  Tính năng nổi bật
 ##  Thuật toán cơ bản
@@ -28,31 +28,22 @@ Hiển thị động theo từng thuật toán
 Hỗ trợ đồ thị có hướng/vô hướng, có trọng số
 
 ## Cài đặt và chạy ứng dụng
-1. Tạo môi trường ảo với Conda
+### 1. Tạo môi trường ảo với Conda
 
 conda create --name graph_app python=3.9 -y
 conda activate graph_app
-2. Clone repository
+### 2. Clone repository
 
 git clone https://github.com/Le-Chi-Bao/graph_app.git
 cd graph_app
-3. Cài đặt thư viện
+### 3. Cài đặt thư viện
 
 pip install -r requirements.txt
-4. Khởi chạy ứng dụng
+### 4. Khởi chạy ứng dụng
 
 python app.py
 Ứng dụng sẽ khởi động và có thể truy cập tại:
 http://localhost:7872
-
-## Cấu trúc dự án
-
-graph_app/
-├── app.py              # Giao diện chính với Gradio
-├── graph_operations.py # Triển khai các thuật toán đồ thị
-├── utils.py            # Tiện ích vẽ đồ thị & chuyển đổi
-├── requirements.txt    # Danh sách thư viện phụ thuộc
-└── README.md           # Tài liệu hướng dẫn
 
 ## Yêu cầu hệ thống
 Python 3.9+
