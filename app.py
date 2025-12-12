@@ -19,12 +19,14 @@ is_directed = False
 graph_ops = GraphOperations()  # Instance của GraphOperations
 
 # ==================== UTILITY FUNCTIONS ====================
-def safe_int_convert(val):
-    """Chuyển đổi an toàn sang int"""
+def safe_node_convert(val):
+    """Chuyển đổi an toàn sang số hoặc giữ nguyên chuỗi"""
     try:
+        # Thử chuyển sang số nguyên trước
         return int(float(val))
-    except:
-        return 0
+    except (ValueError, TypeError):
+        # Nếu không được, trả về chuỗi (giữ nguyên chữ cái)
+        return str(val).strip()
 
 def draw_and_save_graph(G, directed, highlight_path=None, highlight_edges=None, title=""):
     """Vẽ đồ thị và lưu ra file TEMP"""
@@ -111,11 +113,13 @@ def create_graph_handler(text, directed):
         parts = line.split()
         if len(parts) >= 2:
             try:
-                u = safe_int_convert(parts[0])
-                v = safe_int_convert(parts[1])
+                # Sử dụng hàm convert mới hỗ trợ cả số và chữ
+                u = safe_node_convert(parts[0])
+                v = safe_node_convert(parts[1])
                 w = float(parts[2]) if len(parts) > 2 else 1.0
                 edges.append((u, v, w))
-            except:
+            except Exception as e:
+                print(f"Lỗi xử lý dòng '{line}': {e}")
                 continue
     
     if not edges:
@@ -139,8 +143,15 @@ def shortest_path_handler(start, end):
         return "Chưa có đồ thị", None
     
     try:
-        start = int(start)
-        end = int(end)
+        # Chuyển đổi node đầu vào (có thể là số hoặc chữ)
+        start = safe_node_convert(start)
+        end = safe_node_convert(end)
+        
+        # Kiểm tra node có tồn tại trong đồ thị không
+        if start not in current_graph.nodes():
+            return f"Node '{start}' không tồn tại trong đồ thị", None
+        if end not in current_graph.nodes():
+            return f"Node '{end}' không tồn tại trong đồ thị", None
         
         try:
             path = nx.dijkstra_path(current_graph, start, end)
@@ -153,15 +164,15 @@ def shortest_path_handler(start, end):
                 current_graph, is_directed, 
                 highlight_path=path,
                 highlight_edges=path_edges,
-                title=f"Đường đi ngắn nhất: {path} (dài: {length})"
+                title=f"Đường đi ngắn nhất từ '{start}' đến '{end}' (dài: {length})"
             )
             return f"Đường đi: {' -> '.join(map(str, path))}\nĐộ dài: {length}", img_path
         except nx.NetworkXNoPath:
             img_path = draw_and_save_graph(current_graph, is_directed)
-            return "Không tìm thấy đường đi", img_path
-    except:
+            return f"Không tìm thấy đường đi từ '{start}' đến '{end}'", img_path
+    except Exception as e:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "Node không hợp lệ", img_path
+        return f"Lỗi: {str(e)}", img_path
 
 def bfs_handler(start):
     """Xử lý BFS"""
@@ -169,7 +180,13 @@ def bfs_handler(start):
         return "Chưa có đồ thị", None
     
     try:
-        start = int(start)
+        # Chuyển đổi node đầu vào
+        start = safe_node_convert(start)
+        
+        # Kiểm tra node có tồn tại không
+        if start not in current_graph.nodes():
+            return f"Node '{start}' không tồn tại trong đồ thị", None
+        
         # Lấy cây BFS
         bfs_tree = nx.bfs_tree(current_graph, start)
         bfs_nodes = list(bfs_tree.nodes())
@@ -181,12 +198,12 @@ def bfs_handler(start):
             current_graph, is_directed,
             highlight_path=bfs_nodes,
             highlight_edges=bfs_edges,
-            title=f"BFS Tree từ node {start}"
+            title=f"BFS Tree từ node '{start}'"
         )
-        return f"BFS: {bfs_nodes}", img_path
-    except:
+        return f"BFS từ '{start}': {bfs_nodes}", img_path
+    except Exception as e:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "Node không hợp lệ", img_path
+        return f"Lỗi: {str(e)}", img_path
 
 def dfs_handler(start):
     """Xử lý DFS"""
@@ -194,7 +211,13 @@ def dfs_handler(start):
         return "Chưa có đồ thị", None
     
     try:
-        start = int(start)
+        # Chuyển đổi node đầu vào
+        start = safe_node_convert(start)
+        
+        # Kiểm tra node có tồn tại không
+        if start not in current_graph.nodes():
+            return f"Node '{start}' không tồn tại trong đồ thị", None
+        
         # Lấy cây DFS
         dfs_tree = nx.dfs_tree(current_graph, start)
         dfs_nodes = list(dfs_tree.nodes())
@@ -206,12 +229,12 @@ def dfs_handler(start):
             current_graph, is_directed,
             highlight_path=dfs_nodes,
             highlight_edges=dfs_edges,
-            title=f"DFS Tree từ node {start}"
+            title=f"DFS Tree từ node '{start}'"
         )
-        return f"DFS: {dfs_nodes}", img_path
-    except:
+        return f"DFS từ '{start}': {dfs_nodes}", img_path
+    except Exception as e:
         img_path = draw_and_save_graph(current_graph, is_directed)
-        return "Node không hợp lệ", img_path
+        return f"Lỗi: {str(e)}", img_path
 
 def bipartite_handler():
     """Kiểm tra đồ thị 2 phía - Dùng GraphOperations"""
@@ -291,17 +314,24 @@ def ford_fulkerson_handler(source, sink):
         return "Chưa có đồ thị", None
     
     try:
-        source = int(source)
-        sink = int(sink)
+        # Chuyển đổi node đầu vào
+        source = safe_node_convert(source)
+        sink = safe_node_convert(sink)
+        
+        # Kiểm tra node có tồn tại không
+        if source not in current_graph.nodes():
+            return f"Node nguồn '{source}' không tồn tại trong đồ thị", None
+        if sink not in current_graph.nodes():
+            return f"Node đích '{sink}' không tồn tại trong đồ thị", None
         
         max_flow = graph_ops.ford_fulkerson(source, sink)
         
         img_path = draw_and_save_graph(
             current_graph, is_directed,
-            title=f"Ford-Fulkerson - Luồng cực đại: {max_flow}"
+            title=f"Ford-Fulkerson - Luồng cực đại từ '{source}' đến '{sink}': {max_flow}"
         )
         
-        return f"Luồng cực đại từ {source} -> {sink}: {max_flow}", img_path
+        return f"Luồng cực đại từ '{source}' -> '{sink}': {max_flow}", img_path
     except Exception as e:
         return f"Lỗi: {str(e)}", None
 
@@ -311,17 +341,23 @@ def fleury_handler(start_node):
         return "Chưa có đồ thị", None
     
     try:
-        start = int(start_node)
+        # Chuyển đổi node đầu vào
+        start = safe_node_convert(start_node)
+        
+        # Kiểm tra node có tồn tại không
+        if start not in current_graph.nodes():
+            return f"Node '{start}' không tồn tại trong đồ thị", None
+        
         circuit = graph_ops.fleury_eulerian_path(start)
         
         if circuit:
             img_path = draw_and_save_graph(
                 current_graph, is_directed,
                 highlight_edges=circuit,
-                title=f"Fleury - Chu trình Euler"
+                title=f"Fleury - Chu trình Euler bắt đầu từ '{start}'"
             )
             
-            result = f"Chu trình Euler (Fleury):\n"
+            result = f"Chu trình Euler (Fleury) từ '{start}':\n"
             for u, v in circuit:
                 result += f"  {u} -> {v}\n"
             return result, img_path
@@ -336,17 +372,23 @@ def hierholzer_handler(start_node):
         return "Chưa có đồ thị", None
     
     try:
-        start = int(start_node)
+        # Chuyển đổi node đầu vào
+        start = safe_node_convert(start_node)
+        
+        # Kiểm tra node có tồn tại không
+        if start not in current_graph.nodes():
+            return f"Node '{start}' không tồn tại trong đồ thị", None
+        
         circuit = graph_ops.hierholzer_eulerian_circuit(start)
         
         if circuit:
             img_path = draw_and_save_graph(
                 current_graph, is_directed,
                 highlight_edges=circuit,
-                title=f"Hierholzer - Chu trình Euler"
+                title=f"Hierholzer - Chu trình Euler bắt đầu từ '{start}'"
             )
             
-            result = f"Chu trình Euler (Hierholzer):\n"
+            result = f"Chu trình Euler (Hierholzer) từ '{start}':\n"
             for u, v in circuit:
                 result += f"  {u} -> {v}\n"
             return result, img_path
@@ -393,10 +435,10 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                 with gr.Column(scale=1):
                     gr.Markdown("### Nhập danh sách cạnh")
                     input_text = gr.Textbox(
-                        label="Mỗi dòng: u v [weight]",
-                        placeholder="Ví dụ:\n0 1 5\n0 2 3\n1 2 2",
+                        label="Mỗi dòng: u v [weight] (u, v có thể là số hoặc chữ)",
+                        placeholder="Ví dụ với số:\n0 1 5\n0 2 3\n1 2 2\n\nVí dụ với chữ:\nA B 5\nA C 3\nB C 2",
                         lines=10,
-                        value="0 1 5\n0 2 3\n1 2 2"
+                        value="A B 5\nA C 3\nB C 2\nB D 4\nC D 1"
                     )
                     
                     with gr.Row():
@@ -422,15 +464,15 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                     # Dijkstra
                     gr.Markdown("### Đường đi ngắn nhất")
                     with gr.Row():
-                        start_node = gr.Number(label="Node bắt đầu", value=0, precision=0)
-                        end_node = gr.Number(label="Node kết thúc", value=1, precision=0)
+                        start_node = gr.Textbox(label="Node bắt đầu", value="A", placeholder="Nhập node (số hoặc chữ)")
+                        end_node = gr.Textbox(label="Node kết thúc", value="D", placeholder="Nhập node (số hoặc chữ)")
                     
                     dijkstra_btn = gr.Button("Tìm đường đi", variant="primary")
                     dijkstra_result = gr.Textbox(label="Kết quả")
                     
                     # BFS/DFS
                     gr.Markdown("### Duyệt đồ thị")
-                    traversal_start = gr.Number(label="Node bắt đầu", value=0, precision=0)
+                    traversal_start = gr.Textbox(label="Node bắt đầu", value="A", placeholder="Nhập node (số hoặc chữ)")
                     
                     with gr.Row():
                         bfs_btn = gr.Button("BFS")
@@ -484,22 +526,22 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                     
                     # Dynamic inputs based on algorithm
                     with gr.Group() as param_group:
-                        source_input = gr.Number(
+                        source_input = gr.Textbox(
                             label="Source node (cho Ford-Fulkerson)",
-                            value=0,
-                            precision=0,
+                            value="A",
+                            placeholder="Nhập node nguồn",
                             visible=False
                         )
-                        sink_input = gr.Number(
+                        sink_input = gr.Textbox(
                             label="Sink node (cho Ford-Fulkerson)",
-                            value=1,
-                            precision=0,
+                            value="D",
+                            placeholder="Nhập node đích",
                             visible=False
                         )
-                        start_input = gr.Number(
+                        start_input = gr.Textbox(
                             label="Node bắt đầu (cho Fleury/Hierholzer)",
-                            value=0,
-                            precision=0,
+                            value="A",
+                            placeholder="Nhập node bắt đầu",
                             visible=False
                         )
                     
@@ -655,7 +697,7 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                         """Copy JSON vào clipboard (giả lập)"""
                         if json_str != "{}":
                             # Trong Gradio, có thể dùng js để copy thật
-                            return " Đã copy vào clipboard"
+                            return "Đã copy vào clipboard"
                         return " Không có dữ liệu để copy"
                     
                     save_btn.click(
@@ -680,8 +722,8 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                     {
                     "directed": false,
                     "adjacency_list": {
-                        "0": [[1, 5], [2, 3]],
-                        "1": [[0, 5], [2, 2]]
+                        "A": [["B", 5], ["C", 3]],
+                        "B": [["A", 5], ["C", 2], ["D", 4]]
                     }
                     }
                     ```
@@ -689,7 +731,7 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                     
                     json_input = gr.Textbox(
                         label="Dán JSON danh sách kề",
-                        placeholder='{"directed": false, "adjacency_list": {"0": [[1,5]], "1": [[0,5]]}}',
+                        placeholder='{"directed": false, "adjacency_list": {"A": [["B",5]], "B": [["A",5]]}}',
                         lines=6
                     )
                     
@@ -719,10 +761,11 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
                             # Thêm các cạnh
                             edge_count = 0
                             for u_str, neighbors in adj_list.items():
-                                u = int(u_str)
+                                # Chuyển đổi node từ chuỗi (có thể là số hoặc chữ)
+                                u = safe_node_convert(u_str)
                                 for neighbor_info in neighbors:
                                     if isinstance(neighbor_info, list) and len(neighbor_info) >= 2:
-                                        v = int(neighbor_info[0])
+                                        v = safe_node_convert(neighbor_info[0])
                                         w = float(neighbor_info[1]) if len(neighbor_info) > 1 else 1.0
                                         current_graph.add_edge(u, v, weight=w)
                                         edge_count += 1
@@ -754,7 +797,7 @@ with gr.Blocks(title="Trình Xử Lý Đồ Thị", theme=gr.themes.Soft()) as d
     gr.Markdown("---")
     gr.Markdown("""
     ### Hướng dẫn nhanh:
-    1. Tab 1: Nhập đồ thị (mỗi dòng: u v weight)
+    1. Tab 1: Nhập đồ thị (mỗi dòng: u v weight) - **Hỗ trợ cả số và chữ (A, B, C, ...)**
     2. Tab 2: Thuật toán cơ bản (Dijkstra, BFS, DFS, 2 phía)
     3. Tab 3: Thuật toán nâng cao (Prim, Kruskal, Ford-Fulkerson, Fleury, Hierholzer)
     4. Tab 4: Chuyển đổi định dạng
@@ -767,11 +810,16 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore", category=UserWarning)
     
     print("Ứng dụng đang chạy tại: http://localhost:7880")
-    print("Tab 1: Nhập đồ thị")
+    print("Tab 1: Nhập đồ thị (HỖ TRỢ CẢ SỐ VÀ CHỮ CÁI)")
     print("Tab 2: Thuật toán cơ bản (Dijkstra, BFS, DFS)")
     print("Tab 3: Thuật toán nâng cao (Prim, Kruskal, Ford-Fulkerson, Fleury, Hierholzer)")
     print("Tab 4: Chuyển đổi định dạng")
     print("Tab 5: Lưu/tải đồ thị")
+    print("\nVí dụ nhập với chữ cái:")
+    print("A B 5")
+    print("A C 3")
+    print("B C 2")
+    print("B D 4")
     
     demo.launch(
         server_name="0.0.0.0",
