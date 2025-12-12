@@ -31,10 +31,12 @@ Hỗ trợ đồ thị có hướng/vô hướng, có trọng số
 ### 1. Tạo môi trường ảo với Conda
 
 conda create --name graph_app python=3.9 -y
+
 conda activate graph_app
 ### 2. Clone repository
 
 git clone https://github.com/Le-Chi-Bao/graph_app.git
+
 cd graph_app
 ### 3. Cài đặt thư viện
 
@@ -42,8 +44,9 @@ pip install -r requirements.txt
 ### 4. Khởi chạy ứng dụng
 
 python app.py
+
 Ứng dụng sẽ khởi động và có thể truy cập tại:
-http://localhost:7872
+http://localhost:7880
 
 ## Yêu cầu hệ thống
 Python 3.9+
