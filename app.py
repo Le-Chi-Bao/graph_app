@@ -766,7 +766,7 @@ if __name__ == "__main__":
     # Suppress warnings
     warnings.filterwarnings("ignore", category=UserWarning)
     
-    print("Ứng dụng đang chạy tại: http://localhost:7872")
+    print("Ứng dụng đang chạy tại: http://localhost:7880")
     print("Tab 1: Nhập đồ thị")
     print("Tab 2: Thuật toán cơ bản (Dijkstra, BFS, DFS)")
     print("Tab 3: Thuật toán nâng cao (Prim, Kruskal, Ford-Fulkerson, Fleury, Hierholzer)")
