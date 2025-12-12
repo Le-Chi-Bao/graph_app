@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 python app.py
 Ứng dụng sẽ khởi động và có thể truy cập tại:
-http://localhost:7872
+http://localhost:7880
 
 ## Yêu cầu hệ thống
 Python 3.9+
