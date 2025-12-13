@@ -8,6 +8,7 @@ import json
 import tempfile
 import os
 import warnings
+from collections import deque
 
 # ==================== IMPORT MODULES ====================
 from graph_operations import GraphOperations
@@ -33,7 +34,7 @@ def draw_and_save_graph(G, directed, highlight_path=None, highlight_edges=None, 
     if not G.nodes():
         return None
     
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(10, 8))
     pos = nx.spring_layout(G, seed=42)
     
     # Cấu hình cơ bản
@@ -138,25 +139,25 @@ def create_graph_handler(text, directed):
     return f"Tạo thành công {len(edges)} cạnh", img_path
 
 def shortest_path_handler(start, end):
-    """Tìm đường đi ngắn nhất"""
+    """Tìm đường đi ngắn nhất - DÙNG GRAPHOPS"""
     if not current_graph.nodes():
         return "Chưa có đồ thị", None
     
     try:
-        # Chuyển đổi node đầu vào (có thể là số hoặc chữ)
+        # Chuyển đổi node đầu vào
         start = safe_node_convert(start)
         end = safe_node_convert(end)
         
-        # Kiểm tra node có tồn tại trong đồ thị không
+        # Kiểm tra node có tồn tại không
         if start not in current_graph.nodes():
             return f"Node '{start}' không tồn tại trong đồ thị", None
         if end not in current_graph.nodes():
             return f"Node '{end}' không tồn tại trong đồ thị", None
         
-        try:
-            path = nx.dijkstra_path(current_graph, start, end)
-            length = nx.dijkstra_path_length(current_graph, start, end)
-            
+        # SỬA: Dùng graph_ops thay vì nx trực tiếp
+        path, length = graph_ops.shortest_path(start, end)
+        
+        if path:
             # Tạo danh sách cạnh cần highlight
             path_edges = [(path[i], path[i+1]) for i in range(len(path)-1)]
             
@@ -167,7 +168,7 @@ def shortest_path_handler(start, end):
                 title=f"Đường đi ngắn nhất từ '{start}' đến '{end}' (dài: {length})"
             )
             return f"Đường đi: {' -> '.join(map(str, path))}\nĐộ dài: {length}", img_path
-        except nx.NetworkXNoPath:
+        else:
             img_path = draw_and_save_graph(current_graph, is_directed)
             return f"Không tìm thấy đường đi từ '{start}' đến '{end}'", img_path
     except Exception as e:
@@ -175,7 +176,7 @@ def shortest_path_handler(start, end):
         return f"Lỗi: {str(e)}", img_path
 
 def bfs_handler(start):
-    """Xử lý BFS"""
+    """Xử lý BFS - DÙNG GRAPHOPS"""
     if not current_graph.nodes():
         return "Chưa có đồ thị", None
     
@@ -187,12 +188,22 @@ def bfs_handler(start):
         if start not in current_graph.nodes():
             return f"Node '{start}' không tồn tại trong đồ thị", None
         
-        # Lấy cây BFS
-        bfs_tree = nx.bfs_tree(current_graph, start)
-        bfs_nodes = list(bfs_tree.nodes())
+        # SỬA: Dùng graph_ops.bfs_traversal()
+        bfs_nodes = graph_ops.bfs_traversal(start)
         
-        # Lấy các cạnh trong cây BFS
-        bfs_edges = list(bfs_tree.edges())
+        # Tạo các cạnh cho BFS tree (cần tính toán lại)
+        bfs_edges = []
+        visited = set()
+        queue = deque([start])
+        visited.add(start)
+        
+        while queue:
+            current = queue.popleft()
+            for neighbor in current_graph.neighbors(current):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+                    bfs_edges.append((current, neighbor))
         
         img_path = draw_and_save_graph(
             current_graph, is_directed,
@@ -204,9 +215,9 @@ def bfs_handler(start):
     except Exception as e:
         img_path = draw_and_save_graph(current_graph, is_directed)
         return f"Lỗi: {str(e)}", img_path
-
+        
 def dfs_handler(start):
-    """Xử lý DFS"""
+    """Xử lý DFS - DÙNG GRAPHOPS"""
     if not current_graph.nodes():
         return "Chưa có đồ thị", None
     
@@ -218,12 +229,24 @@ def dfs_handler(start):
         if start not in current_graph.nodes():
             return f"Node '{start}' không tồn tại trong đồ thị", None
         
-        # Lấy cây DFS
-        dfs_tree = nx.dfs_tree(current_graph, start)
-        dfs_nodes = list(dfs_tree.nodes())
+        # SỬA: Dùng graph_ops.dfs_traversal()
+        dfs_nodes = graph_ops.dfs_traversal(start)
         
-        # Lấy các cạnh trong cây DFS
-        dfs_edges = list(dfs_tree.edges())
+        # Tạo các cạnh cho DFS tree
+        dfs_edges = []
+        visited = set()
+        stack = [start]
+        parent = {start: None}
+        visited.add(start)
+        
+        while stack:
+            current = stack.pop()
+            for neighbor in current_graph.neighbors(current):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    stack.append(neighbor)
+                    parent[neighbor] = current
+                    dfs_edges.append((current, neighbor))
         
         img_path = draw_and_save_graph(
             current_graph, is_directed,
@@ -235,7 +258,7 @@ def dfs_handler(start):
     except Exception as e:
         img_path = draw_and_save_graph(current_graph, is_directed)
         return f"Lỗi: {str(e)}", img_path
-
+    
 def bipartite_handler():
     """Kiểm tra đồ thị 2 phía - Dùng GraphOperations"""
     if not current_graph.nodes():
@@ -324,14 +347,70 @@ def ford_fulkerson_handler(source, sink):
         if sink not in current_graph.nodes():
             return f"Node đích '{sink}' không tồn tại trong đồ thị", None
         
+        # Kiểm tra đồ thị có hướng
+        if not is_directed:
+            return " Ford-Fulkerson yêu cầu đồ thị CÓ HƯỚNG", None
+        
+        # Gọi hàm từ GraphOperations
         max_flow = graph_ops.ford_fulkerson(source, sink)
         
-        img_path = draw_and_save_graph(
-            current_graph, is_directed,
-            title=f"Ford-Fulkerson - Luồng cực đại từ '{source}' đến '{sink}': {max_flow}"
-        )
+        # Lấy thêm thông tin chi tiết từ NetworkX để hiển thị
+        try:
+            # Tạo đồ thị với capacity
+            flow_graph = nx.DiGraph()
+            for u, v, data in current_graph.edges(data=True):
+                capacity = data.get('weight', 1.0)
+                flow_graph.add_edge(u, v, capacity=capacity)
+            
+            # Thêm tất cả nodes
+            for node in current_graph.nodes():
+                if node not in flow_graph:
+                    flow_graph.add_node(node)
+            
+            # Lấy luồng chi tiết
+            flow_value, flow_dict = nx.maximum_flow(flow_graph, source, sink)
+            
+            # Tìm các cạnh có luồng > 0 để highlight
+            highlight_edges = []
+            edge_details = []
+            
+            for u in flow_dict:
+                for v, flow in flow_dict[u].items():
+                    if flow > 0:
+                        highlight_edges.append((u, v))
+                        if flow_graph.has_edge(u, v):
+                            capacity = flow_graph[u][v]['capacity']
+                            edge_details.append((u, v, flow, capacity))
+            
+            # Vẽ đồ thị với highlight
+            img_buf = draw_and_save_graph(
+                current_graph, is_directed,
+                highlight_edges=highlight_edges,
+                title=f"Ford-Fulkerson: {source}→{sink} | Luồng = {flow_value:.2f}"
+            )
+            
+            # Tạo kết quả chi tiết
+            result = f" **KẾT QUẢ FORD-FULKERSON**\n\n"
+            result += f"• Node nguồn: {source}\n"
+            result += f"• Node đích: {sink}\n"
+            result += f"• Luồng cực đại: **{flow_value:.2f}**\n"
+            
+            if edge_details:
+                result += f"• Số cạnh có luồng > 0: {len(edge_details)}\n\n"
+                result += " **Luồng chi tiết:**\n"
+                for u, v, flow, capacity in sorted(edge_details):
+                    result += f"  {u} → {v}: {flow:.2f}/{capacity:.1f}\n"
+            
+            return result, img_buf
+            
+        except Exception as e:
+            # Fallback nếu không lấy được chi tiết
+            img_buf = draw_and_save_graph(
+                current_graph, is_directed,
+                title=f"Ford-Fulkerson: {source}→{sink} | Luồng = {max_flow:.2f}"
+            )
+            return f"Luồng cực đại từ '{source}' → '{sink}': {max_flow:.2f}", img_buf
         
-        return f"Luồng cực đại từ '{source}' -> '{sink}': {max_flow}", img_path
     except Exception as e:
         return f"Lỗi: {str(e)}", None
 

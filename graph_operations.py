@@ -171,19 +171,22 @@ class GraphOperations:
                 mst_edges.append((u, v, weight))
         
         return mst_edges
-    
-    # 8. Thuật toán Ford-Fulkerson
+    #8
     def ford_fulkerson(self, source, sink):
-        """Tìm luồng cực đại bằng Ford-Fulkerson"""
-        # Tạo đồ thị residual
-        R = nx.DiGraph() if self.directed else nx.Graph()
+        """Tìm luồng cực đại bằng Ford-Fulkerson - VERSION ĐÚNG"""
+        # Residual graph LUÔN là có hướng
+        R = nx.DiGraph()
         
-        # Thêm các cạnh với capacity
+        # Thêm các cạnh với capacity đúng
         for u, v, data in self.graph.edges(data=True):
-            capacity = data.get('weight', 1)
+            capacity = data.get('weight', 1.0)
+            
+            # Cạnh thuận: capacity đầy đủ
             R.add_edge(u, v, capacity=capacity, flow=0)
-            if not self.directed:
-                R.add_edge(v, u, capacity=capacity, flow=0)
+            
+            # Cạnh ngược: capacity = 0 (luôn tồn tại trong residual graph)
+            if not R.has_edge(v, u):
+                R.add_edge(v, u, capacity=0, flow=0)
         
         max_flow = 0
         
@@ -196,7 +199,8 @@ class GraphOperations:
             while queue and not found:
                 u = queue.popleft()
                 for v in R.neighbors(u):
-                    if v not in visited and R[u][v]['capacity'] - R[u][v]['flow'] > 0:
+                    residual_capacity = R[u][v]['capacity'] - R[u][v]['flow']
+                    if v not in visited and residual_capacity > 0:
                         visited[v] = u
                         if v == sink:
                             found = True
@@ -206,12 +210,13 @@ class GraphOperations:
             if not found:
                 break
             
-            # Tìm giá trị luồng tăng
+            # Tìm bottleneck
             path_flow = float('inf')
             v = sink
             while v != source:
                 u = visited[v]
-                path_flow = min(path_flow, R[u][v]['capacity'] - R[u][v]['flow'])
+                residual_capacity = R[u][v]['capacity'] - R[u][v]['flow']
+                path_flow = min(path_flow, residual_capacity)
                 v = u
             
             # Cập nhật luồng
@@ -219,7 +224,7 @@ class GraphOperations:
             while v != source:
                 u = visited[v]
                 R[u][v]['flow'] += path_flow
-                R[v][u]['flow'] -= path_flow
+                R[v][u]['flow'] -= path_flow  # Cập nhật cạnh ngược
                 v = u
             
             max_flow += path_flow
